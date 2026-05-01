@@ -8,6 +8,12 @@ import re
 import json
 from typing import List, Dict, Optional
 
+# Tuning constants
+MAX_CONTEXT_DOCS = 4           # Max docs to include in LLM context window
+MAX_DOC_CONTENT_LENGTH = 800   # Characters per doc in LLM context
+MAX_RESPONSE_BUILD_LENGTH = 600  # Target char limit when building multi-paragraph response
+MAX_FALLBACK_RESPONSE_LENGTH = 800  # Hard cap on extracted fallback response
+
 
 SYSTEM_PROMPT = """You are an intelligent support ticket triaging agent.
 
@@ -85,12 +91,12 @@ def _extract_response_from_docs(docs: List[Dict], issue: str) -> str:
         # Return top paragraphs for context
         response_parts = [best_para]
         for para in paragraphs:
-            if para != best_para and len("\n\n".join(response_parts)) < 600:
+            if para != best_para and len("\n\n".join(response_parts)) < MAX_RESPONSE_BUILD_LENGTH:
                 response_parts.append(para)
             if len(response_parts) >= 3:
                 break
 
-        result = "\n\n".join(response_parts)[:800]
+        result = "\n\n".join(response_parts)[:MAX_FALLBACK_RESPONSE_LENGTH]
         if len(result) > 100:
             return result
 
@@ -109,8 +115,8 @@ def _call_claude_api(issue: str, subject: str, company: str, docs: List[Dict]) -
 
         # Build context from retrieved docs
         doc_context = ""
-        for i, doc in enumerate(docs[:4], 1):
-            doc_context += f"\n\n--- Document {i}: {doc['title']} ---\n{doc['content'][:800]}"
+        for i, doc in enumerate(docs[:MAX_CONTEXT_DOCS], 1):
+            doc_context += f"\n\n--- Document {i}: {doc['title']} ---\n{doc['content'][:MAX_DOC_CONTENT_LENGTH]}"
 
         user_message = f"""Support ticket:
 Company: {company}

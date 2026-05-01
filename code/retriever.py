@@ -7,6 +7,12 @@ import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 
+# Retrieval tuning constants
+CANDIDATE_EXPANSION_FACTOR = 5  # Retrieve N*top_k candidates before score filtering
+MIN_RELEVANCE_SCORE = 0.01      # Discard docs below this cosine similarity
+COMPANY_BOOST_FACTOR = 2.0      # Multiply scores for matching-company docs
+INDEX_FILE_PENALTY = 0.1        # Penalize table-of-contents / navigation files
+
 
 class TFIDFRetriever:
     """
@@ -47,19 +53,19 @@ class TFIDFRetriever:
         if company and company != "None":
             for i, doc in enumerate(self.corpus):
                 if doc["company"].lower() == company.lower():
-                    scores[i] *= 2.0
+                    scores[i] *= COMPANY_BOOST_FACTOR
 
         # Penalize index/navigation files - they are tables-of-contents, not answers
         for i, doc in enumerate(self.corpus):
             fname = doc["id"].split("/")[-1].lower()
             if fname in ("index.md", "support.md") or doc["title"].lower() in ("index", ""):
-                scores[i] *= 0.1
+                scores[i] *= INDEX_FILE_PENALTY
 
-        top_indices = scores.argsort()[::-1][:top_k * 5]  # get more, then filter
+        top_indices = scores.argsort()[::-1][:top_k * CANDIDATE_EXPANSION_FACTOR]  # over-fetch then filter
 
         results = []
         for idx in top_indices:
-            if scores[idx] < 0.01:
+            if scores[idx] < MIN_RELEVANCE_SCORE:
                 break
             doc = dict(self.corpus[idx])
             doc["score"] = float(scores[idx])

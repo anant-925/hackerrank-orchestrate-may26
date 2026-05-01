@@ -68,7 +68,8 @@ def build_query(issue: str, subject: str, company: str) -> str:
     query_lower = query.lower()
     expansions = []
     if "infosec" in query_lower or "security questionnaire" in query_lower:
-        expansions.append("account security enhancing hackerrank work vendor data")
+        # "enhancing" matches the doc title "Enhancing your Account Security on Hackerrank for Work"
+        expansions.append("account security enhancement hackerrank work vendor data")
     if "remove" in query_lower and "user" in query_lower:
         expansions.append("deactivate user remove member manage users lock access")
     if "subscription pause" in query_lower:
